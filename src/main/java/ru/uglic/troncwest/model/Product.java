@@ -7,9 +7,9 @@ import javax.persistence.Entity;
 import javax.persistence.Table;
 
 @Entity
-@Table(name = "goods")
+@Table(name = "products")
 @Data
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public class Good extends AbstractNamedEntity {
+public class Product extends AbstractNamedEntity {
     private static final long serialVersionUID = 1L;
 }

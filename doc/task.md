@@ -6,7 +6,7 @@
 
 Справочники в минимальной конфигурации для задачи
 
-- Товары `Goods`: 
+- Товары `Products`: 
 
 |name|type|index|description
 |---|---|---|---|
@@ -29,28 +29,28 @@
 
 ### Основные таблицы
 
-- Остатки товаров на складе `StockGoodRemains` 
+- Остатки товаров на складе `StockProductRemainders` 
 
 |name|type|index|description
 |---|---|---|---|
 |`id`|`long`|`unique`| Код для 
-|`goods_id`|`long`| -> `Goods.id`| Код товара
+|`product_id`|`long`| -> `Products.id`| Код товара
 |`stock_id`|`long`| -> `Stocks.id`| Код склада
 |`quantity`|`long`|-| Количество товара в минимальных единицах
 
-unique index: `good_stock_idx`=(`goods_id`, `stock_id`) 
+unique index: `stock_product_idx`=(`stock_id`, `product_id`) 
 
-- Резервы товаров для клиентов `StockCustomerReservedGoods`
+- Резервы товаров для клиентов `StockReservedProductRemainders`
 
 |name|type|index|description
 |---|---|---|---|
 |`id`|`long`|`unique`| Код для связи
-|`goods_id`|`long`| -> `Goods.id`| Код товара
+|`productid`|`long`| -> `Products.id`| Код товара
 |`stock_id`|`long`| -> `Stocks.id`| Код склада
 |`customer_id`|`long`| -> `Customers.id`| Код клиента
 |`quantity`|`long`|-| Зарезервированное количество товара в минимальных единицах
 
-unique index: `good_stock_customer_idx`=(`goods_id`, `stock_id`, `customer_id`)
+unique index: `stock_product_customer_idx`=(`stock_id`, `product_id`, `customer_id`)
 
 ## Структура классов
 

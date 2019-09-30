@@ -8,22 +8,22 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.PositiveOrZero;
 
 @Entity
-@Table(name = "stock_good_remains", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"goods_id", "stock_id"}, name = "good_stock_idx")})
+@Table(name = "stock_product_remainders", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"stock_id", "product_id"}, name = "stock_product_idx")})
 @Data
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
-public class StockGoodRemain extends AbstractBaseEntity {
+public class StockProductRemainder extends AbstractBaseEntity {
     private static final long serialVersionUID = 1L;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "goods_id", nullable = false)
-    @NotNull
-    private Good good;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "stock_id", nullable = false)
     @NotNull
     private Stock stock;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    @NotNull
+    private Product product;
 
     @Column(name = "quantity", nullable = false)
     @PositiveOrZero
