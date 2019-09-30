@@ -1,6 +1,5 @@
 package ru.uglic.troncwest.dto;
 
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import ru.uglic.troncwest.model.Stock;

@@ -14,16 +14,21 @@ import ru.uglic.troncwest.repository.*;
 public class ProductRemainderService {
     private static final int TRANS_TIMEOUT = 2;
     private final Logger log = LoggerFactory.getLogger(StockProductRemainder.class);
-    @Autowired
-    private CustomerRepository customerRepository;
-    @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private StockRepository stockRepository;
-    @Autowired
-    private StockReservedProductRemainderRepository stockReservedProductRemainderRepository;
-    @Autowired
-    private StockProductRemainderRepository stockProductRemainderRepository;
+//    @Autowired
+//    private CustomerRepository customerRepository;
+//    @Autowired
+//    private ProductRepository productRepository;
+//    @Autowired
+//    private StockRepository stockRepository;
+
+    private final StockReservedProductRemainderRepository stockReservedProductRemainderRepository;
+    private final StockProductRemainderRepository stockProductRemainderRepository;
+
+    public ProductRemainderService(StockReservedProductRemainderRepository stockReservedProductRemainderRepository,
+                                   StockProductRemainderRepository stockProductRemainderRepository) {
+        this.stockReservedProductRemainderRepository = stockReservedProductRemainderRepository;
+        this.stockProductRemainderRepository = stockProductRemainderRepository;
+    }
 
     /**
      * Gets remainder of particular product on particular stock taking into account the reserve.
@@ -31,19 +36,15 @@ public class ProductRemainderService {
      *
      * @param productId Product id
      * @param stockId   Stock id
-     * @return Total remainder of good subtract sum of reserves for it
+     * @return Total remainder of product subtract sum of reserves for it
      */
     @Transactional(isolation = Isolation.SERIALIZABLE, timeout = TRANS_TIMEOUT)
     public long getFreeBalance(long productId, long stockId) {
         Long fullBalance = stockProductRemainderRepository.getQuantityByGoodAndStock(productId, stockId);
         Long reserved = stockReservedProductRemainderRepository.getSumByGoodAndStock(productId, stockId);
-        if (fullBalance != null && fullBalance < 0) {
-            log.error("error.goods.balance.negative g={} s={} q={}", productId, stockId, fullBalance);
-            return 0; // or throw new IllegalStateException();
-        }
-        if (reserved != null && reserved < 0) {
-            log.error("error.goods.reserved.negative g={} s={} r={}", productId, stockId, reserved);
-            return 0; //throw new IllegalStateException();
+        if (isNotValidBalance(fullBalance, "error.goods.balance.negative", productId, stockId)
+                || isNotValidBalance(reserved, "error.goods.reserved.negative", productId, stockId)) {
+            return 0;
         }
         long fullBalanceValue = fullBalance != null ? fullBalance : 0;
         long reservedValue = reserved != null ? reserved : 0;
@@ -55,8 +56,21 @@ public class ProductRemainderService {
         }
     }
 
+    /**
+     * Gets remainder of particular product on particular stock without taking into account the reserve.
+     * Returns zero in case of any error.
+     *
+     * @param productId Product id
+     * @param stockId   Stock id
+     * @return Total remainder of product ignoring the reserve
+     */
+    @Transactional(isolation = Isolation.READ_COMMITTED, timeout = TRANS_TIMEOUT)
     public long getFullBalance(long productId, long stockId) {
-        return 0;
+        Long fullBalance = stockProductRemainderRepository.getQuantityByGoodAndStock(productId, stockId);
+        if (isNotValidBalance(fullBalance, "error.goods.balance.negative", productId, stockId)) {
+            return 0;
+        }
+        return fullBalance != null ? fullBalance : 0;
     }
 
     public void reserveCustomer(long productId, long stockId, long customerId, long quantity) {
@@ -67,5 +81,15 @@ public class ProductRemainderService {
 
     public CustomerReservedDto getCustomerReserved(long customerId) {
         return null;
+    }
+
+    /* ********************************* */
+
+    private boolean isNotValidBalance(Long balance, String message, long productId, long stockId) {
+        if (balance != null && balance < 0) {
+            log.error("{} p={} s={} balance={}", message, productId, stockId, balance);
+            return true;
+        }
+        return false;
     }
 }
