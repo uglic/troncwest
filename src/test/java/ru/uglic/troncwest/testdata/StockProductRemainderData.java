@@ -8,7 +8,7 @@ import ru.uglic.troncwest.model.StockProductRemainder;
 
 @Component
 public class StockProductRemainderData extends AbstractData<StockProductRemainder> {
-    public final static int INDEX_FREE = 3;
+    public final static int INDEX_FREE = 0;
     private final StockData stockData;
     private final ProductData productData;
 
@@ -21,18 +21,18 @@ public class StockProductRemainderData extends AbstractData<StockProductRemainde
 
     @Override
     public void addData() {
-        add(create(null, stockData.get(0), productData.get(0), 91));
-        add(create(null, stockData.get(0), productData.get(1), 92));
-        add(create(null, stockData.get(0), productData.get(2), 93));
-        add(create(null, stockData.get(1), productData.get(0), 94));
-        add(create(null, stockData.get(1), productData.get(1), 95));
-        add(create(null, stockData.get(1), productData.get(2), 96));
-        add(create(null, stockData.get(2), productData.get(0), 97));
-        add(create(null, stockData.get(2), productData.get(1), 98));
-        add(create(null, stockData.get(2), productData.get(2), 99));
+        add(create(null, productData.get(0), stockData.get(0), 91));
+        add(create(null, productData.get(1), stockData.get(0), 92));
+        add(create(null, productData.get(2), stockData.get(0), 93));
+        add(create(null, productData.get(0), stockData.get(1), 94));
+        add(create(null, productData.get(1), stockData.get(1), 95));
+        add(create(null, productData.get(2), stockData.get(1), 96));
+        add(create(null, productData.get(0), stockData.get(2), 97));
+        add(create(null, productData.get(1), stockData.get(2), 98));
+        add(create(null, productData.get(2), stockData.get(2), 99));
     }
 
-    private StockProductRemainder create(Long id, Stock stock, Product product, long quantity) {
+    private StockProductRemainder create(Long id, Product product, Stock stock, long quantity) {
         StockProductRemainder entity = new StockProductRemainder();
         entity.setId(id);
         entity.setStock(stock);

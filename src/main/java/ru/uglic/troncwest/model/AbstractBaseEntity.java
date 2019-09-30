@@ -15,6 +15,10 @@ abstract public class AbstractBaseEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
+    @Version
+    @Column(name = "opt_lock")
+    private Long optLock;
+
     public boolean isNew() {
         return id == null;
     }
