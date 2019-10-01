@@ -2,7 +2,6 @@ package ru.uglic.troncwest.service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.annotation.Commit;
 import ru.uglic.troncwest.AbstractSpringTest;
 import ru.uglic.troncwest.dto.CustomerReservedDto;
 import ru.uglic.troncwest.testbean.MultiThreadServiceBean;
@@ -11,7 +10,6 @@ import ru.uglic.troncwest.testdata.ProductData;
 import ru.uglic.troncwest.testdata.StockData;
 
 import javax.annotation.PostConstruct;
-
 import java.util.ArrayList;
 import java.util.List;
 

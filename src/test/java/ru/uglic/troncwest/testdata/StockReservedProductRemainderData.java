@@ -2,7 +2,10 @@ package ru.uglic.troncwest.testdata;
 
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Component;
-import ru.uglic.troncwest.model.*;
+import ru.uglic.troncwest.model.Customer;
+import ru.uglic.troncwest.model.Product;
+import ru.uglic.troncwest.model.Stock;
+import ru.uglic.troncwest.model.StockReservedProductRemainder;
 
 @Component
 public class StockReservedProductRemainderData extends AbstractData<StockReservedProductRemainder> {
