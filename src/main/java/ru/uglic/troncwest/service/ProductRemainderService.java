@@ -165,7 +165,7 @@ public class ProductRemainderService {
 
     private <T> T getFromRepository(CrudRepository<T, Long> repository, long id, Class<T> clazz) {
         return repository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundByIdException(id, clazz));
+                .orElseThrow(() -> new EntityNotFoundByIdException("by-id", id, clazz));
     }
 
     private StockReservedProductRemainder getReserveEntity(long productId, long stockId, long customerId) {
