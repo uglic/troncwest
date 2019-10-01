@@ -17,7 +17,7 @@ abstract public class AbstractBaseEntity implements Serializable {
 
     @Version
     @Column(name = "opt_lock")
-    private Long optLock;
+    private long optLock;
 
     public boolean isNew() {
         return id == null;

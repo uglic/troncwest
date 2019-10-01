@@ -5,6 +5,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 import ru.uglic.troncwest.model.StockReservedProductRemainder;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -16,4 +17,6 @@ public interface StockReservedProductRemainderRepository extends CrudRepository<
     Long getSumByGoodAndStock(long productId, long stockId);
 
     Optional<StockReservedProductRemainder> getByProductIdAndStockIdAndCustomerId(long productId, long stockId, long customerId);
+
+    List<StockReservedProductRemainder> getReservedByCustomerIdOrderByProductIdAscStockIdAsc(long customerId);
 }

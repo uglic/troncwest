@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import ru.uglic.troncwest.dto.CustomerReservedDto;
 import ru.uglic.troncwest.exception.EntityNotFoundByIdException;
@@ -12,11 +11,13 @@ import ru.uglic.troncwest.exception.IllegalArgumentByIdException;
 import ru.uglic.troncwest.model.*;
 import ru.uglic.troncwest.repository.*;
 
-import javax.persistence.EntityNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
+@Transactional(timeout = ProductRemainderService.TRANS_TIMEOUT)
 public class ProductRemainderService {
-    private static final int TRANS_TIMEOUT = 2;
+    static final int TRANS_TIMEOUT = 2;
     private final Logger log = LoggerFactory.getLogger(StockProductRemainder.class);
 
     private final StockReservedProductRemainderRepository stockReservedProductRemainderRepository;
@@ -44,7 +45,6 @@ public class ProductRemainderService {
      * @param stockId   Stock id
      * @return Total remainder of product subtract sum of reserves for it
      */
-    @Transactional(isolation = Isolation.SERIALIZABLE, timeout = TRANS_TIMEOUT)
     public long getFreeBalance(long productId, long stockId) {
         Long fullBalance = stockProductRemainderRepository.getQuantityByGoodAndStock(productId, stockId);
         Long reserved = stockReservedProductRemainderRepository.getSumByGoodAndStock(productId, stockId);
@@ -58,7 +58,7 @@ public class ProductRemainderService {
             return fullBalanceValue - reservedValue;
         } else {
             log.error("error.products.remainder.negative g={} s={} f={} r={}", productId, stockId, fullBalance, reserved);
-            return 0; //throw new IllegalStateException();
+            return 0;
         }
     }
 
@@ -70,7 +70,6 @@ public class ProductRemainderService {
      * @param stockId   Stock id
      * @return Total remainder of product ignoring the reserve
      */
-    @Transactional(isolation = Isolation.READ_COMMITTED, timeout = TRANS_TIMEOUT)
     public long getFullBalance(long productId, long stockId) {
         Long fullBalance = stockProductRemainderRepository.getQuantityByGoodAndStock(productId, stockId);
         if (isNotValidBalance(fullBalance, "error.products.balance.negative", productId, stockId)) {
@@ -90,41 +89,68 @@ public class ProductRemainderService {
      * @throws javax.persistence.EntityNotFoundException   If product, stock or customer does not found by it's id
      * @throws org.springframework.dao.DataAccessException If was error during save() of reserve
      */
-    @Transactional(isolation = Isolation.SERIALIZABLE, timeout = TRANS_TIMEOUT)
     public void reserveCustomer(long productId, long stockId, long customerId, long quantity) {
         if (quantity <= 0) {
-            throw new IllegalArgumentByIdException(productId, stockId, customerId, quantity);
+            throw new IllegalArgumentByIdException("add-low", productId, stockId, customerId, quantity);
         }
         long balanceBefore = getFreeBalance(productId, stockId);
-        StockReservedProductRemainder reserve = stockReservedProductRemainderRepository
-                .getByProductIdAndStockIdAndCustomerId(productId, stockId, customerId)
-                .orElseGet(() -> {
-                    StockReservedProductRemainder entity = new StockReservedProductRemainder();
-                    entity.setProduct(getFromRepository(productRepository, productId, Product.class));
-                    entity.setStock(getFromRepository(stockRepository, stockId, Stock.class));
-                    entity.setCustomer(getFromRepository(customerRepository, customerId, Customer.class));
-//                    entity.setQuantity(0);
-//                    entity.setId(null);
-                    return entity;
-                });
-        long newQuantity = reserve.getQuantity();
-        if (newQuantity < 0) {
-            throw new IllegalArgumentByIdException(productId, stockId, customerId, newQuantity);
+        StockReservedProductRemainder reserve = getReserveEntity(productId, stockId, customerId);
+        long currQuantity = reserve.getQuantity();
+        if (currQuantity < 0) {
+            throw new IllegalArgumentByIdException("exist-negative", productId, stockId, customerId, currQuantity);
         }
-        newQuantity += quantity;
-        if (newQuantity > balanceBefore) {
-            throw new IllegalArgumentByIdException(productId, stockId, customerId, quantity);
+        if (balanceBefore - quantity < 0) {
+            throw new IllegalArgumentByIdException("add-too-many", productId, stockId, customerId, quantity, balanceBefore);
         } else {
-            reserve.setQuantity(newQuantity);
+            reserve.setQuantity(currQuantity + quantity);
             stockReservedProductRemainderRepository.save(reserve);
         }
     }
 
+    /**
+     * Free from reserve a quantity of particular product at particular stock for particular customer
+     *
+     * @param productId  Product id
+     * @param stockId    Stock id
+     * @param customerId Customer id
+     * @param quantity   Quantity of product to free from reserve
+     * @throws java.lang.IllegalArgumentException          If quantity is non-positive or more then existing reserve
+     * @throws javax.persistence.EntityNotFoundException   If product, stock or customer does not found by it's id
+     * @throws org.springframework.dao.DataAccessException If was error during save() or delete() of reserve
+     */
     public void freeCustomer(long productId, long stockId, long customerId, long quantity) {
+        if (quantity <= 0) {
+            throw new IllegalArgumentByIdException("free-low", productId, stockId, customerId, quantity);
+        }
+        StockReservedProductRemainder reserve = getReserveEntity(productId, stockId, customerId);
+        long currQuantity = reserve.getQuantity();
+        if (currQuantity < quantity) {
+            if (currQuantity < 0) {
+                throw new IllegalArgumentByIdException("exist-negative", productId, stockId, customerId, currQuantity);
+            } else {
+                throw new IllegalArgumentByIdException("free-too-many", productId, stockId, customerId, quantity, currQuantity);
+            }
+        } else if (currQuantity == quantity) {
+            stockReservedProductRemainderRepository.deleteById(reserve.getId());
+        } else {
+            reserve.setQuantity(currQuantity - quantity);
+            stockReservedProductRemainderRepository.save(reserve);
+        }
     }
 
-    public CustomerReservedDto getCustomerReserved(long customerId) {
-        return null;
+    /**
+     * List of reserved products per stock with reserved quantity
+     *
+     * @param customerId Customer id
+     * @return {@link List}<{@link CustomerReservedDto}> List of DTO entities
+     */
+    public List<CustomerReservedDto> getCustomerReserved(long customerId) {
+        List<StockReservedProductRemainder> reservedList = stockReservedProductRemainderRepository
+                .getReservedByCustomerIdOrderByProductIdAscStockIdAsc(customerId);
+        List<CustomerReservedDto> resultList = new ArrayList<>();
+        reservedList.forEach(e -> resultList.add(
+                CustomerReservedDto.asDto(e.getProduct(), e.getStock(), e.getQuantity())));
+        return resultList;
     }
 
     /* ********************************* */
@@ -140,5 +166,17 @@ public class ProductRemainderService {
     private <T> T getFromRepository(CrudRepository<T, Long> repository, long id, Class<T> clazz) {
         return repository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundByIdException(id, clazz));
+    }
+
+    private StockReservedProductRemainder getReserveEntity(long productId, long stockId, long customerId) {
+        return stockReservedProductRemainderRepository
+                .getByProductIdAndStockIdAndCustomerId(productId, stockId, customerId)
+                .orElseGet(() -> {
+                    StockReservedProductRemainder entity = new StockReservedProductRemainder();
+                    entity.setProduct(getFromRepository(productRepository, productId, Product.class));
+                    entity.setStock(getFromRepository(stockRepository, stockId, Stock.class));
+                    entity.setCustomer(getFromRepository(customerRepository, customerId, Customer.class));
+                    return entity;
+                });
     }
 }
